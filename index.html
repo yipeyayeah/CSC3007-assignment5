@@ -1,0 +1,124 @@
+<html>
+    <head>
+        <title>CSC3007 Assignment5</title>
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.css"
+        />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://use.fontawesome.com/releases/v5.6.3/css/all.css"
+            integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/"
+            crossorigin="anonymous"
+        />
+        <link
+            rel="stylesheet"
+            href="https://bootswatch.com/4/journal/bootstrap.min.css"
+        />
+        <!-- MDB -->
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/3.10.2/mdb.min.css"
+            rel="stylesheet"
+        />
+    </head>
+    <body>
+        <h2 style="text-align: center">Singapore PSI Map</h2>
+        <h4 style="text-align: center" id="header_text"></h4>
+        <div class="container">
+            <div class="row mt-12" id="mapdiv" style="height: 550px"></div>
+        </div>
+    </body>
+    <script>
+        fetch("https://api.data.gov.sg/v1/environment/psi")
+            .then((response) => {
+                return response.json();
+            })
+            .then((data) => {
+                var update_timestamp = new Date(data.items[0].update_timestamp);
+
+                document.getElementById("header_text").innerHTML =
+                    "Last updated: " +
+                    update_timestamp.toLocaleTimeString() +
+                    " " +
+                    update_timestamp.toLocaleDateString();
+                var center = L.bounds(
+                    [1.56073, 104.11475],
+                    [1.16, 103.502]
+                ).getCenter();
+                var map = L.map("mapdiv").setView([center.x, center.y], 11);
+
+                var tiles = L.tileLayer(
+                    "https://maps-{s}.onemap.sg/v3/Grey/{z}/{x}/{y}.png",
+                    {
+                        detectRetina: true,
+                        maxZoom: 18,
+                        minZoom: 12,
+                        //Do not remove this attribution
+                        attribution:
+                            '<img src="https://www.onemap.gov.sg/docs/maps/images/oneMap64-01.png" style="height:20px;width:20px;"/> OneMap | Map data &copy; contributors, <a href="http://SLA.gov.sg">Singapore Land Authority</a>',
+                    }
+                );
+
+                map.setMaxBounds([
+                    [1.56073, 104.1147],
+                    [1.16, 103.502],
+                ]);
+
+                tiles.addTo(map);
+
+                var readings = data.items[0].readings.psi_twenty_four_hourly;
+
+                data.region_metadata.forEach(function (dataObject) {
+                    // console.log(dataObject.label_location.latitude);
+                    var circleSize, colour;
+
+                    for (const [key, value] of Object.entries(readings)) {
+                        if (dataObject.name == key) {
+                            //set the tooltip
+                            var tooltip = L.tooltip({
+                                permanent: true,
+                                direction: "center",
+                                className: "text",
+                            })
+                                .setContent(`${value}`)
+                                .setLatLng([
+                                    dataObject.label_location.latitude,
+                                    dataObject.label_location.longitude,
+                                ])
+                                .addTo(map);
+
+                            if (value > 45) {
+                                circleSize = 2500;
+                                colour="#006400";
+                            } else if (value > 39 && value < 46) {
+                                circleSize = 2200;
+                                colour="#228B22";
+                            } else if (value > 34 && value < 41) {
+                                circleSize = 1900;
+                                colour="#32CD32";
+                            } else if (value > 29 && value < 26) {
+                                circleSize = 1600;
+                                colour="#98FB98";
+
+                            }
+                        }
+                    }
+
+                    var circle = L.circle(
+                        [
+                            dataObject.label_location.latitude,
+                            dataObject.label_location.longitude,
+                        ],
+                        {
+                            color: null,
+                            fillColor: colour,
+                            fillOpacity: 0.5,
+                            radius: circleSize,
+                            NaN,
+                        }
+                    ).addTo(map);
+                });
+            });
+    </script>
+</html>
